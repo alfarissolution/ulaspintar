@@ -13,7 +13,6 @@ import {
   Store,
   Sparkles,
   Upload,
-  QrCode as QrIcon,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -447,7 +446,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Daftar Klien Terdaftar ({clients.length})[cite: 17]
+              Daftar Klien Terdaftar ({clients.length})
             </h3>
           </div>
 
@@ -466,12 +465,12 @@ export default function AdminPage() {
                         <img src={c.logo_url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0" />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
-                          {c.business_name.substring(0, 2).toUpperCase()}[cite: 17]
+                          {c.business_name.substring(0, 2).toUpperCase()}
                         </div>
                       )}
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900">{c.business_name}</h4>[cite: 17]
-                        <p className="text-xs font-mono text-sky-600 mt-0.5">/{c.slug}</p>[cite: 17]
+                        <h4 className="text-sm font-bold text-slate-900">{c.business_name}</h4>
+                        <p className="text-xs font-mono text-sky-600 mt-0.5">/{c.slug}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -489,7 +488,7 @@ export default function AdminPage() {
                         className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
                         title="Salin Tautan"
                       >
-                        <Copy className="w-3.5 h-3.5" /> Salin Link[cite: 17]
+                        <Copy className="w-3.5 h-3.5" /> Salin Link
                       </button>
                       <a
                         href={clientUrl}
@@ -497,7 +496,7 @@ export default function AdminPage() {
                         rel="noopener noreferrer"
                         className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" /> Preview[cite: 17]
+                        <ExternalLink className="w-3.5 h-3.5" /> Preview
                       </a>
                     </div>
                   </div>
