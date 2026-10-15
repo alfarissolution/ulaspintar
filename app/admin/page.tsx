@@ -12,6 +12,8 @@ import {
   Download,
   Store,
   Sparkles,
+  Upload,
+  QrCode as QrIcon,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -32,6 +34,7 @@ export default function AdminPage() {
     snippet_3: '',
   });
 
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successData, setSuccessData] = useState<{ slug: string; fullUrl: string } | null>(null);
   const [qrImageUrl, setQrImageUrl] = useState('');
@@ -67,6 +70,57 @@ export default function AdminPage() {
       business_name: name,
       slug: generatedSlug,
     }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setErrorMessage('');
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      setFormData((prev) => ({ ...prev, logo_url: publicUrlData.publicUrl }));
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || 'Gagal mengunggah logo. Pastikan bucket "logos" sudah dibuat public.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleDownloadQR = async (slug: string) => {
+    try {
+      const targetUrl = `${window.location.origin}/${slug}`;
+      const dataUrl = await QRCode.toDataURL(targetUrl, {
+        width: 600,
+        margin: 2,
+        color: { dark: '#0f172a', light: '#ffffff' },
+      });
+
+      const downloadLink = document.createElement('a');
+      downloadLink.href = dataUrl;
+      downloadLink.download = `QR-UlasPintar-${slug}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    } catch (err) {
+      console.error('Gagal generate QR Code:', err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,10 +159,7 @@ export default function AdminPage() {
       const qrDataUrl = await QRCode.toDataURL(fullUrl, {
         width: 400,
         margin: 2,
-        color: {
-          dark: '#0f172a',
-          light: '#ffffff',
-        },
+        color: { dark: '#0f172a', light: '#ffffff' },
       });
 
       setSuccessData({ slug: formData.slug, fullUrl });
@@ -159,6 +210,7 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Notifikasi Error */}
         {errorMessage && (
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-700 text-sm">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -169,6 +221,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Notifikasi Sukses + Preview QR Code Baru */}
         {successData && (
           <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
             <div className="flex items-center gap-2 text-emerald-800 font-bold text-base mb-2">
@@ -176,7 +229,7 @@ export default function AdminPage() {
               Klien Baru Berhasil Ditambahkan!
             </div>
             <p className="text-xs text-emerald-700 mb-5">
-              Halaman ulasan sudah langsung aktif dan QR code siap diunduh untuk bahan cetak.
+              Halaman ulasan sudah langsung aktif dan QR code siap diunduh.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-6 bg-white p-5 rounded-xl border border-emerald-100 shadow-sm">
@@ -226,6 +279,7 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Form Tambah Klien */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <Store className="w-4 h-4 text-sky-600" />
@@ -260,18 +314,38 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Input Logo URL */}
+          {/* Upload Logo Toko */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              URL Gambar Logo Toko (Opsional)
+              Logo Toko (Upload File atau Isi URL)
             </label>
-            <input
-              type="url"
-              placeholder="https://domain.com/logo-toko.png (Kosongkan jika ingin memakai inisial otomatis)"
-              value={formData.logo_url}
-              onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-              className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 font-medium"
-            />
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <label className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer border border-slate-300 transition">
+                <Upload className="w-4 h-4 text-sky-600" />
+                <span>{uploadingLogo ? 'Mengunggah...' : 'Pilih Berkas Logo'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploadingLogo}
+                  className="hidden"
+                />
+              </label>
+              <input
+                type="url"
+                placeholder="https://... atau otomatis terisi dari tombol upload"
+                value={formData.logo_url}
+                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                className="w-full flex-1 px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 font-medium"
+              />
+            </div>
+            {formData.logo_url && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-emerald-600 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Logo terpasang. Preview:
+                <img src={formData.logo_url} alt="Logo" className="w-6 h-6 rounded-full object-cover border border-slate-200 ml-1" />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -356,7 +430,7 @@ export default function AdminPage() {
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploadingLogo}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md transition disabled:opacity-50 text-sm active:scale-[0.99]"
           >
             {saving ? (
@@ -369,11 +443,11 @@ export default function AdminPage() {
           </button>
         </form>
 
-        {/* Tabel Daftar Klien */}
+        {/* Tabel Daftar Klien dengan Tombol Unduh QR */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-              Daftar Klien Terdaftar ({clients.length})
+              Daftar Klien Terdaftar ({clients.length})[cite: 17]
             </h3>
           </div>
 
@@ -389,33 +463,41 @@ export default function AdminPage() {
                   <div key={c.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       {c.logo_url ? (
-                        <img src={c.logo_url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                        <img src={c.logo_url} alt="" className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 font-bold text-xs flex items-center justify-center">
-                          {c.business_name.substring(0, 2).toUpperCase()}
+                        <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 font-bold text-xs flex items-center justify-center flex-shrink-0">
+                          {c.business_name.substring(0, 2).toUpperCase()}[cite: 17]
                         </div>
                       )}
                       <div>
-                        <h4 className="text-sm font-bold text-slate-900">{c.business_name}</h4>
-                        <p className="text-xs font-mono text-sky-600 mt-0.5">/{c.slug}</p>
+                        <h4 className="text-sm font-bold text-slate-900">{c.business_name}</h4>[cite: 17]
+                        <p className="text-xs font-mono text-sky-600 mt-0.5">/{c.slug}</p>[cite: 17]
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadQR(c.slug)}
+                        className="px-3 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                        title="Unduh QR Code Toko Ini"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Unduh QR
+                      </button>
                       <button
                         type="button"
                         onClick={() => navigator.clipboard.writeText(clientUrl)}
                         className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
                         title="Salin Tautan"
                       >
-                        <Copy className="w-3.5 h-3.5" /> Salin Link
+                        <Copy className="w-3.5 h-3.5" /> Salin Link[cite: 17]
                       </button>
                       <a
                         href={clientUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1.5 bg-sky-50 text-sky-600 hover:bg-sky-100 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
                       >
-                        <ExternalLink className="w-3.5 h-3.5" /> Preview
+                        <ExternalLink className="w-3.5 h-3.5" /> Preview[cite: 17]
                       </a>
                     </div>
                   </div>
@@ -424,6 +506,14 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+
+        {/* Footer Admin */}
+        <footer className="pt-6 pb-12 text-center text-xs text-slate-400 border-t border-slate-200">
+          <p className="font-semibold text-slate-600">UlasPintar Management System</p>
+          <p className="text-[11px] mt-1">
+            Created with passion by <span className="font-bold text-sky-600">Alfaris Solution</span>
+          </p>
+        </footer>
 
       </div>
     </div>
